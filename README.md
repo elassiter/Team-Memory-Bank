@@ -51,6 +51,72 @@ This repository implements a structured approach to managing development knowled
 
 ---
 
+## Setup Overview
+
+The dual MCP memory system requires **four key components** working together:
+
+### 1. 📂 Local Team Memory Repository
+**What**: A centralized Git repository containing organization-wide patterns and standards  
+**Where**: `c:\repos\team-memory-bank\`  
+**Purpose**: Single source of truth for architectural decisions, coding standards, and reusable patterns  
+**Access**: Cloned once per machine, shared across all projects  
+**Contains**: 
+- Architecture decision records (ADRs)
+- Global .NET patterns (Clean Architecture, CQRS, etc.)
+- Team coding standards and conventions
+
+### 2. 🔧 VS Code User-Level MCP Configuration
+**What**: Global MCP server configuration for the `team-memory` server  
+**Where**: User-level settings (affects all VS Code windows)  
+**Configuration File**: Accessed via `MCP: Open User Configuration` command  
+**Purpose**: Connects Copilot to the team memory repository for all projects  
+**Scope**: Machine-wide, applies to every workspace you open  
+**Key Setting**: Points to `C:\repos\team-memory-bank` as the memory root
+
+### 3. ⚙️ VS Code Project-Level MCP Configuration
+**What**: Workspace-specific MCP server configuration for the `project-memory` server  
+**Where**: `.vscode/mcp.json` in each project repository  
+**Configuration File**: Accessed via `MCP: Open Workspace Folder MCP Configuration` command  
+**Purpose**: Connects Copilot to project-specific context and active work  
+**Scope**: Per-project, isolated to that workspace  
+**Key Setting**: Points to `${workspaceFolder}\.memory-bank` as the memory root
+
+### 4. 📝 Copilot Instructions File
+**What**: Workflow instructions that tell Copilot how to use both memory banks  
+**Where**: `.github/copilot-instructions.md` in each project repository  
+**Purpose**: Defines when and how Copilot should read/write to memory banks  
+**Critical for**: 
+- Session start protocols (read team + project memory)
+- Update frequency rules (when to update active-context.md)
+- Separation of concerns (team vs. project patterns)
+
+### How They Work Together
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│  VS Code User Config (Global)                               │
+│  ↓ Connects to                                              │
+│  Team Memory Repo: c:\repos\team-memory-bank\              │
+│     └─ Read global patterns (all projects)                  │
+└─────────────────────────────────────────────────────────────┘
+                              +
+┌─────────────────────────────────────────────────────────────┐
+│  VS Code Project Config (Per-Workspace)                     │
+│  ↓ Connects to                                              │
+│  Project Memory: project\.memory-bank\                      │
+│     └─ Read/write project context                           │
+└─────────────────────────────────────────────────────────────┘
+                              +
+┌─────────────────────────────────────────────────────────────┐
+│  Copilot Instructions (.github/copilot-instructions.md)     │
+│     └─ Orchestrates when/how to use both memory banks       │
+└─────────────────────────────────────────────────────────────┘
+```
+
+**Result**: Copilot has access to both team-wide patterns and project-specific context in every chat session.
+
+---
+
 ## Configuration for VS Code
 
 ### Prerequisites
