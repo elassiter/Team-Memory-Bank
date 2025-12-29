@@ -53,11 +53,11 @@ This repository implements a structured approach to managing development knowled
 
 ## Setup Overview
 
-The dual MCP memory system requires **four key components** working together:
+The dual MCP memory system requires **three key components** working together:
 
 ### 1. 📂 Local Team Memory Repository
 **What**: A centralized Git repository containing organization-wide patterns and standards  
-**Where**: `c:\repos\team-memory-bank\`  
+**Where**: `C:\Users\<username>\repos\team-memory-bank\`  
 **Purpose**: Single source of truth for architectural decisions, coding standards, and reusable patterns  
 **Access**: Cloned once per machine, shared across all projects  
 **Contains**: 
@@ -65,23 +65,17 @@ The dual MCP memory system requires **four key components** working together:
 - Global .NET patterns (Clean Architecture, CQRS, etc.)
 - Team coding standards and conventions
 
-### 2. 🔧 VS Code User-Level MCP Configuration
-**What**: Global MCP server configuration for the `team-memory` server  
-**Where**: User-level settings (affects all VS Code windows)  
-**Configuration File**: Accessed via `MCP: Open User Configuration` command  
-**Purpose**: Connects Copilot to the team memory repository for all projects  
-**Scope**: Machine-wide, applies to every workspace you open  
-**Key Setting**: Points to `C:\repos\team-memory-bank` as the memory root
-
-### 3. ⚙️ VS Code Project-Level MCP Configuration
-**What**: Workspace-specific MCP server configuration for the `project-memory` server  
+### 2. ⚙️ VS Code Project-Level MCP Configuration
+**What**: Workspace-specific MCP configuration for **both** `team-memory` and `project-memory` servers  
 **Where**: `.vscode/mcp.json` in each project repository  
 **Configuration File**: Accessed via `MCP: Open Workspace Folder MCP Configuration` command  
-**Purpose**: Connects Copilot to project-specific context and active work  
-**Scope**: Per-project, isolated to that workspace  
-**Key Setting**: Points to `${workspaceFolder}\.memory-bank` as the memory root
+**Purpose**: Connects Copilot to both team-wide patterns and project-specific context  
+**Scope**: Per-project, configured once per workspace  
+**Key Settings**: 
+- `team-memory`: Points to `${env:USERPROFILE}\repos\team-memory-bank`
+- `project-memory`: Points to `${workspaceFolder}\.memory-bank`
 
-### 4. 📝 Copilot Instructions File
+### 3. 📝 Copilot Instructions File
 **What**: Workflow instructions that tell Copilot how to use both memory banks  
 **Where**: `.github/copilot-instructions.md` in each project repository  
 **Purpose**: Defines when and how Copilot should read/write to memory banks  
@@ -94,16 +88,19 @@ The dual MCP memory system requires **four key components** working together:
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│  VS Code User Config (Global)                               │
-│  ↓ Connects to                                              │
-│  Team Memory Repo: c:\repos\team-memory-bank\              │
-│     └─ Read global patterns (all projects)                  │
+│  Local Team Memory Repository                               │
+│  Location: %USERPROFILE%\repos\team-memory-bank\           │
+│     └─ Contains global patterns, ADRs, standards            │
 └─────────────────────────────────────────────────────────────┘
-                              +
+                              ↓
 ┌─────────────────────────────────────────────────────────────┐
-│  VS Code Project Config (Per-Workspace)                     │
-│  ↓ Connects to                                              │
-│  Project Memory: project\.memory-bank\                      │
+│  VS Code Project Config (.vscode/mcp.json)                  │
+│  ↓ Configures TWO MCP servers:                              │
+│                                                              │
+│  1. team-memory → %USERPROFILE%\repos\team-memory-bank\   │
+│     └─ Read global patterns                                 │
+│                                                              │
+│  2. project-memory → ${workspaceFolder}\.memory-bank\      │
 │     └─ Read/write project context                           │
 └─────────────────────────────────────────────────────────────┘
                               +
@@ -160,23 +157,18 @@ If the commands above fail or are not found:
 #### Step 1: Clone Team Memory Bank Repository
 
 ```powershell
-git clone <repository-url> c:\repos\team-memory-bank
+git clone <repository-url> $env:USERPROFILE\repos\team-memory-bank
 ```
 
-Or if the repository doesn't exist yet:
+#### Step 2: Configure MCP Servers (Project Level)
 
-```powershell
-mkdir c:\repos\team-memory-bank
-cd c:\repos\team-memory-bank
-git init
-```
+For **each project** you work on:
 
-#### Step 2: Configure Global Team Memory MCP Server
-
-1. Open VS Code Command Palette: **Ctrl+Shift+P**
-2. Type and select: **`MCP: Open User Configuration`**
-3. This opens your global MCP configuration file (applies to all VS Code windows)
-4. Add the following server configuration to the `"servers"` section:
+1. Navigate to your project root directory in VS Code
+2. Open VS Code Command Palette: **Ctrl+Shift+P**
+3. Type and select: **`MCP: Open Workspace Folder MCP Configuration`**
+4. This creates/opens `.vscode/mcp.json` in your project root
+5. Add the following configuration with **both servers**:
 
 ```json
 {
@@ -185,7 +177,7 @@ git init
       "command": "npx",
       "args": ["-y", "@allpepper/memory-bank-mcp@latest"],
       "env": {
-        "MEMORY_BANK_ROOT": "C:\\repos\\team-memory-bank"
+        "MEMORY_BANK_ROOT": "${env:USERPROFILE}\\repos\\team-memory-bank"
       },
       "disabled": false,
       "autoApprove": [
@@ -195,31 +187,7 @@ git init
         "memory_bank_write",
         "memory_bank_update"
       ]
-    }
-  }
-}
-```
-
-**Important**: Use double backslashes (`\\`) in Windows paths within JSON files.
-
-#### Step 3: Configure Project Memory MCP Server
-
-For **each project** you work on:
-
-1. Navigate to your project root directory
-2. Create the MCP configuration directory and file:
-   ```powershell
-   mkdir .vscode
-   ```
-   
-3. Open VS Code Command Palette: **Ctrl+Shift+P**
-4. Type and select: **`MCP: Open Workspace Folder MCP Configuration`**
-5. This creates/opens `.vscode/mcp.json` in your project root
-6. Add the following configuration:
-
-```json
-{
-  "servers": {
+    },
     "project-memory": {
       "command": "npx",
       "args": ["-y", "@allpepper/memory-bank-mcp@latest"],
@@ -239,9 +207,14 @@ For **each project** you work on:
 }
 ```
 
-**Note**: The `${workspaceFolder}` variable automatically resolves to your project root.
+**Important Notes**: 
+- Use double backslashes (`\\`) in Windows paths within JSON files
+- Both servers use the same MCP package but point to different root directories
+- `${env:USERPROFILE}` resolves to the current user's profile directory
+- `${workspaceFolder}` resolves to your project root directory
 
-#### Step 4: Add GitHub Copilot Instructions
+
+#### Step 3: Add GitHub Copilot Instructions
 
 In your project repository, create or update `.github/copilot-instructions.md`:
 
@@ -251,7 +224,7 @@ mkdir .github
 
 Then create `.github/copilot-instructions.md` with the complete dual MCP memory system instructions. *(See the complete template in the appendix below)*
 
-#### Step 5: Restart VS Code
+#### Step 4: Restart VS Code
 
 1. Close **all** VS Code windows
 2. Restart VS Code
@@ -265,9 +238,11 @@ Then create `.github/copilot-instructions.md` with the complete dual MCP memory 
 
 1. Open VS Code Command Palette: **Ctrl+Shift+P**
 2. Type: **`MCP: List Connected Servers`**
-3. You should see:
+3. You should see both servers connected:
    - `team-memory` (connected)
-   - `project-memory` (connected for workspace)
+   - `project-memory` (connected)
+
+**Note**: Both servers are configured at the workspace level, so they only connect when you have a project open with the `.vscode/mcp.json` configuration.
 
 ### Test Team Memory Access
 
@@ -338,7 +313,7 @@ Copilot will:
 ### Team Memory Bank (This Repository)
 
 ```
-c:\repos\team-memory-bank\
+C:\Users\<username>\repos\team-memory-bank\
 ├── README.md (this file)
 ├── architecture-decisions/
 │   └── adr-001-clean-architecture.md
@@ -380,7 +355,7 @@ your-project\
 
 ### "Memory Bank Root Not Found" Error
 
-1. Verify the path exists: `dir C:\repos\team-memory-bank`
+1. Verify the path exists: `dir $env:USERPROFILE\repos\team-memory-bank`
 2. Check environment variable in MCP config
 3. Ensure no typos in path names
 
@@ -427,7 +402,7 @@ You have TWO MCP memory bank servers:
 
 ### 1. Team Memory (Global Patterns)
 - **MCP Server**: `team-memory`
-- **Location**: `C:\repos\team-memory-bank\`
+- **Location**: `%USERPROFILE%\repos\team-memory-bank\`
 - **Access**: Read-only (ask before writing)
 - **Projects**: 
   - `dotnet-global` - Universal .NET patterns
